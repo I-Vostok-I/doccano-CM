@@ -6,7 +6,8 @@ from projects.models import Project
 
 
 class AutoLabelingConfig(models.Model):
-    TASK_CHOICES = (("Category", "category"), ("Span", "span"), ("Text", "text"), ("Relation", "relation"))
+    TASK_CHOICES = (("Category", "category"), ("Span", "span"), ("Text", "text"), ("Relation", "relation"),
+                    ("SpanRelAndTrait", "spanRelAndTrait"))
     model_name = models.CharField(max_length=100)
     model_attrs = models.JSONField(default=dict)
     template = models.TextField(default="")

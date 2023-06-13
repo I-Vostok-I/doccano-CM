@@ -37,8 +37,8 @@ function toModel(item: { [key: string]: any }): Project {
     item.allow_overlapping,
     item.grapheme_mode,
     item.use_relation,
+    item.use_trait,
     item.tags.map((tag: { [key: string]: any }) => new TagItem(tag.id, tag.text, tag.project)),
-    item.allow_member_to_create_label_type,
     item.users,
     item.created_at,
     item.updated_at,
@@ -60,8 +60,8 @@ function toPayload(item: Project): { [key: string]: any } {
     allow_overlapping: item.allowOverlappingSpans,
     grapheme_mode: item.enableGraphemeMode,
     use_relation: item.useRelation,
+    use_trait: item.useTrait,
     tags: item.tags,
-    allow_member_to_create_label_type: item.allowMemberToCreateLabelType,
     resourcetype: item.resourceType
   }
 }
@@ -110,11 +110,5 @@ export class APIProjectRepository {
   async bulkDelete(projectIds: number[]): Promise<void> {
     const url = `/projects`
     await this.request.delete(url, { ids: projectIds })
-  }
-
-  async clone(project: Project): Promise<Project> {
-    const url = `/projects/${project.id}/clone`
-    const response = await this.request.post(url)
-    return toModel(response.data)
   }
 }

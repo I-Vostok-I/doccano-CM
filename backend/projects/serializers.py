@@ -71,8 +71,12 @@ class ProjectSerializer(serializers.ModelSerializer):
             "author",
             "collaborative_annotation",
             "single_class_classification",
-            "allow_member_to_create_label_type",
             "is_text_project",
+            "can_define_label",
+            "can_define_relation",
+            "can_define_trait",
+            "can_define_category",
+            "can_define_span",
             "tags",
         ]
         read_only_fields = (
@@ -80,6 +84,11 @@ class ProjectSerializer(serializers.ModelSerializer):
             "updated_at",
             "author",
             "is_text_project",
+            "can_define_label",
+            "can_define_relation",
+            "can_define_trait",
+            "can_define_category",
+            "can_define_span",
         )
 
     def create(self, validated_data):
@@ -103,7 +112,7 @@ class TextClassificationProjectSerializer(ProjectSerializer):
 class SequenceLabelingProjectSerializer(ProjectSerializer):
     class Meta(ProjectSerializer.Meta):
         model = SequenceLabelingProject
-        fields = ProjectSerializer.Meta.fields + ["allow_overlapping", "grapheme_mode", "use_relation"]
+        fields = ProjectSerializer.Meta.fields + ["allow_overlapping", "grapheme_mode", "use_relation", "use_trait"]
 
 
 class Seq2seqProjectSerializer(ProjectSerializer):

@@ -7,7 +7,17 @@ from pydantic import BaseModel
 from typing_extensions import Literal
 
 from .exceptions import FileFormatException
-from projects.models import ProjectType
+from projects.models import (
+    BOUNDING_BOX,
+    DOCUMENT_CLASSIFICATION,
+    IMAGE_CAPTIONING,
+    IMAGE_CLASSIFICATION,
+    INTENT_DETECTION_AND_SLOT_FILLING,
+    SEGMENTATION,
+    SEQ2SEQ,
+    SEQUENCE_LABELING,
+    SPEECH2TEXT,
+)
 
 # Define the example directories
 EXAMPLE_DIR = Path(__file__).parent.resolve() / "examples"
@@ -15,13 +25,19 @@ TASK_AGNOSTIC_DIR = EXAMPLE_DIR / "task_agnostic"
 TEXT_CLASSIFICATION_DIR = EXAMPLE_DIR / "text_classification"
 SEQUENCE_LABELING_DIR = EXAMPLE_DIR / "sequence_labeling"
 RELATION_EXTRACTION_DIR = EXAMPLE_DIR / "relation_extraction"
+RELATION_TRAIT_EXTRACTION_DIR = EXAMPLE_DIR / "relation_trait_extraction"
+TRAIT_EXTRACTION_DIR = EXAMPLE_DIR / "trait_extraction"
 SEQ2SEQ_DIR = EXAMPLE_DIR / "sequence_to_sequence"
 INTENT_DETECTION_DIR = EXAMPLE_DIR / "intent_detection"
 IMAGE_CLASSIFICATION_DIR = EXAMPLE_DIR / "image_classification"
 SPEECH_TO_TEXT_DIR = EXAMPLE_DIR / "speech_to_text"
+AWS_CM_IMPORT_DIR = EXAMPLE_DIR / "aws_cm_import"
 
 # Define the task identifiers
 RELATION_EXTRACTION = "RelationExtraction"
+TRAIT_EXTRACTION = "TraitExtraction"
+RELATION_TRAIT_EXTRACTION = "RelationTraitExtraction"
+AWS_CM_IMPORT = "AwsCmImport"
 
 encodings = Literal[
     "Auto",
@@ -265,10 +281,14 @@ class Options:
     options: Dict[str, List] = defaultdict(list)
 
     @classmethod
-    def filter_by_task(cls, task_name: str, use_relation: bool = False):
+    def filter_by_task(cls, task_name: str, use_relation: bool = False, use_trait: bool = False):
         options = cls.options[task_name]
-        if use_relation:
+        if use_relation and use_trait:
+            options = cls.options[task_name] + cls.options[RELATION_EXTRACTION] + cls.options[TRAIT_EXTRACTION] + cls.options[AWS_CM_IMPORT]
+        elif use_relation:
             options = cls.options[task_name] + cls.options[RELATION_EXTRACTION]
+        elif use_trait:
+            options = cls.options[task_name] + cls.options[TRAIT_EXTRACTION]
         return [option.dict() for option in options]
 
     @classmethod
@@ -277,12 +297,7 @@ class Options:
 
 
 # Text tasks
-text_tasks = [
-    ProjectType.DOCUMENT_CLASSIFICATION,
-    ProjectType.SEQUENCE_LABELING,
-    ProjectType.SEQ2SEQ,
-    ProjectType.INTENT_DETECTION_AND_SLOT_FILLING,
-]
+text_tasks = [DOCUMENT_CLASSIFICATION, SEQUENCE_LABELING, SEQ2SEQ, INTENT_DETECTION_AND_SLOT_FILLING]
 for task_id in text_tasks:
     Options.register(
         Option(
@@ -307,7 +322,7 @@ for task_id in text_tasks:
 Options.register(
     Option(
         display_name=CSV.name,
-        task_id=ProjectType.DOCUMENT_CLASSIFICATION,
+        task_id=DOCUMENT_CLASSIFICATION,
         file_format=CSV,
         arg=ArgDelimiter,
         file=TEXT_CLASSIFICATION_DIR / "example.csv",
@@ -316,7 +331,7 @@ Options.register(
 Options.register(
     Option(
         display_name=FastText.name,
-        task_id=ProjectType.DOCUMENT_CLASSIFICATION,
+        task_id=DOCUMENT_CLASSIFICATION,
         file_format=FastText,
         arg=ArgEncoding,
         file=TEXT_CLASSIFICATION_DIR / "example.txt",
@@ -325,7 +340,7 @@ Options.register(
 Options.register(
     Option(
         display_name=JSON.name,
-        task_id=ProjectType.DOCUMENT_CLASSIFICATION,
+        task_id=DOCUMENT_CLASSIFICATION,
         file_format=JSON,
         arg=ArgColumn,
         file=TEXT_CLASSIFICATION_DIR / "example.json",
@@ -334,7 +349,7 @@ Options.register(
 Options.register(
     Option(
         display_name=JSONL.name,
-        task_id=ProjectType.DOCUMENT_CLASSIFICATION,
+        task_id=DOCUMENT_CLASSIFICATION,
         file_format=JSONL,
         arg=ArgColumn,
         file=TEXT_CLASSIFICATION_DIR / "example.jsonl",
@@ -343,7 +358,7 @@ Options.register(
 Options.register(
     Option(
         display_name=Excel.name,
-        task_id=ProjectType.DOCUMENT_CLASSIFICATION,
+        task_id=DOCUMENT_CLASSIFICATION,
         file_format=Excel,
         arg=ArgColumn,
         file=TEXT_CLASSIFICATION_DIR / "example.csv",
@@ -354,7 +369,7 @@ Options.register(
 Options.register(
     Option(
         display_name=JSONL.name,
-        task_id=ProjectType.SEQUENCE_LABELING,
+        task_id=SEQUENCE_LABELING,
         file_format=JSONL,
         arg=ArgColumn,
         file=SEQUENCE_LABELING_DIR / "example.jsonl",
@@ -363,7 +378,7 @@ Options.register(
 Options.register(
     Option(
         display_name=CoNLL.name,
-        task_id=ProjectType.SEQUENCE_LABELING,
+        task_id=SEQUENCE_LABELING,
         file_format=CoNLL,
         arg=ArgCoNLL,
         file=SEQUENCE_LABELING_DIR / "example.txt",
@@ -381,11 +396,44 @@ Options.register(
     )
 )
 
+# Relation Trait Extraction
+Options.register(
+    Option(
+        display_name="JSONL(Relation_Trait)",
+        task_id=RELATION_TRAIT_EXTRACTION,
+        file_format=JSONL,
+        arg=ArgNone,
+        file=RELATION_TRAIT_EXTRACTION_DIR / "example.jsonl",
+    )
+)
+
+# Trait Extraction
+Options.register(
+    Option(
+        display_name="JSONL(Trait)",
+        task_id=TRAIT_EXTRACTION,
+        file_format=JSONL,
+        arg=ArgNone,
+        file=TRAIT_EXTRACTION_DIR / "example.jsonl",
+    )
+)
+
+# Amazon Web Services Comprehend Medical Import
+Options.register(
+    Option(
+        display_name="JSONL(AWS_CM)",
+        task_id=AWS_CM_IMPORT,
+        file_format=JSONL,
+        arg=ArgNone,
+        file=AWS_CM_IMPORT_DIR / "example.jsonl",
+    )
+)
+
 # Seq2seq
 Options.register(
     Option(
         display_name=CSV.name,
-        task_id=ProjectType.SEQ2SEQ,
+        task_id=SEQ2SEQ,
         file_format=CSV,
         arg=ArgDelimiter,
         file=SEQ2SEQ_DIR / "example.csv",
@@ -394,7 +442,7 @@ Options.register(
 Options.register(
     Option(
         display_name=JSON.name,
-        task_id=ProjectType.SEQ2SEQ,
+        task_id=SEQ2SEQ,
         file_format=JSON,
         arg=ArgColumn,
         file=SEQ2SEQ_DIR / "example.json",
@@ -403,7 +451,7 @@ Options.register(
 Options.register(
     Option(
         display_name=JSONL.name,
-        task_id=ProjectType.SEQ2SEQ,
+        task_id=SEQ2SEQ,
         file_format=JSONL,
         arg=ArgColumn,
         file=SEQ2SEQ_DIR / "example.jsonl",
@@ -412,7 +460,7 @@ Options.register(
 Options.register(
     Option(
         display_name=Excel.name,
-        task_id=ProjectType.SEQ2SEQ,
+        task_id=SEQ2SEQ,
         file_format=Excel,
         arg=ArgColumn,
         file=SEQ2SEQ_DIR / "example.csv",
@@ -423,7 +471,7 @@ Options.register(
 Options.register(
     Option(
         display_name=JSONL.name,
-        task_id=ProjectType.INTENT_DETECTION_AND_SLOT_FILLING,
+        task_id=INTENT_DETECTION_AND_SLOT_FILLING,
         file_format=JSONL,
         arg=ArgNone,
         file=INTENT_DETECTION_DIR / "example.jsonl",
@@ -431,12 +479,7 @@ Options.register(
 )
 
 # Image tasks
-image_tasks = [
-    ProjectType.IMAGE_CLASSIFICATION,
-    ProjectType.IMAGE_CAPTIONING,
-    ProjectType.BOUNDING_BOX,
-    ProjectType.SEGMENTATION,
-]
+image_tasks = [IMAGE_CLASSIFICATION, IMAGE_CAPTIONING, BOUNDING_BOX, SEGMENTATION]
 for task_name in image_tasks:
     Options.register(
         Option(
@@ -452,7 +495,7 @@ for task_name in image_tasks:
 Options.register(
     Option(
         display_name=AudioFile.name,
-        task_id=ProjectType.SPEECH2TEXT,
+        task_id=SPEECH2TEXT,
         file_format=AudioFile,
         arg=ArgNone,
         file=SPEECH_TO_TEXT_DIR / "audio_files.txt",

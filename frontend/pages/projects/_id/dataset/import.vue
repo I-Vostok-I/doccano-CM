@@ -105,8 +105,6 @@ export default {
 
   layout: 'project',
 
-  middleware: ['check-auth', 'auth', 'setCurrentProject', 'isProjectAdmin'],
-
   validate({ params }) {
     return /^\d+$/.test(params.id)
   },

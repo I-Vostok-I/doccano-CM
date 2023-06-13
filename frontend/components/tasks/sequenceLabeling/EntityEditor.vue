@@ -8,14 +8,18 @@
       :entity-labels="entityLabels"
       :relations="relations"
       :relation-labels="relationLabels"
+      :traits="traits"
+      :trait-labels="traitLabels"
       :allow-overlapping="allowOverlapping"
       :grapheme-mode="graphemeMode"
       :selected-entities="selectedEntities"
       @add:entity="handleAddEvent"
       @click:entity="onEntityClicked"
       @click:relation="onRelationClicked"
+      @click:trait="onTraitClicked"
       @contextmenu:entity="deleteEntity"
       @contextmenu:relation="deleteRelation"
+      @contextmenu:trait="deleteTrait"
     />
     <labeling-menu
       :opened="entityMenuOpened"
@@ -23,6 +27,7 @@
       :y="y"
       :selected-label="currentLabel"
       :labels="entityLabels"
+      :annotation="entity"
       @close="cleanUp"
       @click:label="addOrUpdateEntity"
     />
@@ -32,8 +37,19 @@
       :y="y"
       :selected-label="currentRelationLabel"
       :labels="relationLabels"
+      :annotation="relation"
       @close="cleanUp"
       @click:label="addOrUpdateRelation"
+    />
+    <labeling-menu
+      :opened="traitMenuOpened"
+      :x="x"
+      :y="y"
+      :selected-label="currentTraitLabel"
+      :labels="traitLabels"
+      :annotation="trait"
+      @close="cleanUp"
+      @click:label="addOrUpdateTrait"
     />
   </div>
 </template>
@@ -84,6 +100,14 @@ export default Vue.extend({
       type: Array,
       default: () => []
     },
+    traits: {
+      type: Array,
+      default: () => []
+    },
+    traitLabels: {
+      type: Array,
+      default: () => []
+    },
     allowOverlapping: {
       type: Boolean,
       default: false,
@@ -101,6 +125,10 @@ export default Vue.extend({
     relationMode: {
       type: Boolean,
       default: false
+    },
+    traitMode: {
+      type: Boolean,
+      default: false
     }
   },
 
@@ -108,12 +136,14 @@ export default Vue.extend({
     return {
       entityMenuOpened: false,
       relationMenuOpened: false,
+      traitMenuOpened: false,
       x: 0,
       y: 0,
       startOffset: 0,
       endOffset: 0,
       entity: null as any,
       relation: null as any,
+      trait: null as any,
       selectedEntities: [] as SpanDTO[]
     }
   },
@@ -135,6 +165,15 @@ export default Vue.extend({
       } else {
         return null
       }
+    },
+
+    currentTraitLabel(): any {
+      if (this.trait) {
+        const label = this.traitLabels.find((label: any) => label.id === this.trait.type)
+        return label
+      } else {
+        return null
+      }
     }
   },
 
@@ -152,6 +191,10 @@ export default Vue.extend({
       this.relation = this.relations.find((relation: any) => relation.id === relationId)
     },
 
+    setTrait(traitId: number) {
+      this.trait = this.traits.find((trait: any) => trait.id === traitId)
+    },
+
     setEntityForRelation(e: Event, entityId: number) {
       const entity = this.entities.find((entity) => entity.id === entityId)!
       const index = this.selectedEntities.findIndex((e) => e.id === entity.id)
@@ -166,6 +209,24 @@ export default Vue.extend({
           this.cleanUp()
         } else {
           this.showRelationLabelMenu(e)
+        }
+      }
+    },
+
+    setEntityForTrait(e: Event, entityId: number) {
+      const entity = this.entities.find((entity) => entity.id === entityId)!
+      const index = this.selectedEntities.findIndex((e) => e.id === entity.id)
+      if (index === -1) {
+        this.selectedEntities.push(entity)
+      } else {
+        this.selectedEntities.splice(index, 1)
+      }
+      if (this.selectedEntities.length === 1) {
+        if (this.selectedLabel) {
+          this.addTrait(this.selectedLabel.id)
+          this.cleanUp()
+        } else {
+          this.showTraitLabelMenu(e)
         }
       }
     },
@@ -190,10 +251,20 @@ export default Vue.extend({
       })
     },
 
+    showTraitLabelMenu(e: any) {
+      e.preventDefault()
+      this.traitMenuOpened = false
+      this.x = e.clientX || e.changedTouches[0].clientX
+      this.y = e.clientY || e.changedTouches[0].clientY
+      this.$nextTick(() => {
+        this.traitMenuOpened = true
+      })
+    },
+
     handleAddEvent(e: any, startOffset: number, endOffset: number) {
       this.setOffset(startOffset, endOffset)
       if (this.selectedLabel) {
-        this.addOrUpdateEntity(this.selectedLabel.id)
+        this.addOrUpdateEntity(this.selectedLabel.id, 'added')
       } else {
         this.showEntityLabelMenu(e)
       }
@@ -201,7 +272,9 @@ export default Vue.extend({
 
     onEntityClicked(e: any, entityId: number) {
       if (this.relationMode) {
-        this.setEntityForRelation(e, entityId)
+        this.setEntityForRelation(e, entityId)        
+      } else if (this.traitMode) {
+        this.setEntityForTrait(e, entityId)
       } else {
         this.setEntity(entityId)
         this.showEntityLabelMenu(e)
@@ -213,10 +286,15 @@ export default Vue.extend({
       this.showRelationLabelMenu(e)
     },
 
-    addOrUpdateEntity(labelId: number) {
+    onTraitClicked(e: any, trait: any) {
+      this.setTrait(trait.id)
+      this.showTraitLabelMenu(e)
+    },
+
+    addOrUpdateEntity(labelId: number, newState: string) {
       if (labelId) {
         if (this.entity) {
-          this.updateEntity(labelId)
+          this.updateEntity(labelId, newState)
         } else {
           this.addEntity(labelId)
         }
@@ -226,10 +304,10 @@ export default Vue.extend({
       this.cleanUp()
     },
 
-    addOrUpdateRelation(labelId: number) {
+    addOrUpdateRelation(labelId: number, newState: string) {
       if (labelId) {
         if (this.relation) {
-          this.updateRelation(labelId)
+          this.updateRelation(labelId, newState)
         } else {
           this.addRelation(labelId)
         }
@@ -239,12 +317,25 @@ export default Vue.extend({
       this.cleanUp()
     },
 
+    addOrUpdateTrait(type: number, newState: string) {
+      if (type) {
+        if (this.trait) {
+          this.updateTrait(type, newState)
+        } else {
+          this.addTrait(type)
+        }
+      } else {
+        this.deleteTrait(this.trait)
+      }
+      this.cleanUp()
+    },
+
     addEntity(labelId: number) {
       this.$emit('addEntity', this.startOffset, this.endOffset, labelId)
     },
 
-    updateEntity(labelId: number) {
-      this.$emit('click:entity', this.entity!.id, labelId)
+    updateEntity(labelId: number, newState: string) {
+      this.$emit('click:entity', this.entity!.id, labelId, newState)
     },
 
     deleteEntity(entity: any) {
@@ -255,8 +346,10 @@ export default Vue.extend({
     cleanUp() {
       this.entityMenuOpened = false
       this.relationMenuOpened = false
+      this.traitMenuOpened = false
       this.entity = null
       this.relation = null
+      this.trait = null
       this.startOffset = 0
       this.endOffset = 0
       this.selectedEntities = []
@@ -267,12 +360,25 @@ export default Vue.extend({
       this.$emit('addRelation', fromEntity.id, toEntity.id, labelId)
     },
 
-    updateRelation(labelId: number) {
-      this.$emit('click:relation', this.relation.id, labelId)
+    updateRelation(labelId: number, newState: string) {
+      this.$emit('click:relation', this.relation.id, labelId, newState)
     },
 
     deleteRelation(relation: any) {
       this.$emit('contextmenu:relation', relation.id)
+    },
+
+    addTrait(type: number) {
+      const [boundEntity] = this.selectedEntities
+      this.$emit('addTrait', type, boundEntity.id)
+    },
+
+    updateTrait(type: number, newState: string) {
+      this.$emit('click:trait', this.trait.id, type, newState)
+    },
+
+    deleteTrait(trait: any) {
+      this.$emit('contextmenu:trait', trait.id)
     }
   }
 })

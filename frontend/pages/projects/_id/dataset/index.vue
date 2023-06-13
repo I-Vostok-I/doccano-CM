@@ -35,7 +35,7 @@
       </v-dialog>
     </v-card-title>
     <image-list
-      v-if="project.isImageProject"
+      v-if="isImageTask"
       v-model="selected"
       :items="item.items"
       :is-loading="isLoading"
@@ -44,7 +44,7 @@
       @click:labeling="movePage"
     />
     <audio-list
-      v-else-if="project.isAudioProject"
+      v-else-if="isAudioTask"
       v-model="selected"
       :items="item.items"
       :is-loading="isLoading"
@@ -60,22 +60,20 @@
       :total="item.count"
       @update:query="updateQuery"
       @click:labeling="movePage"
-      @edit="editItem"
     />
   </v-card>
 </template>
 
 <script lang="ts">
 import _ from 'lodash'
-import { mapGetters } from 'vuex'
 import Vue from 'vue'
-import { NuxtAppOptions } from '@nuxt/types'
 import DocumentList from '@/components/example/DocumentList.vue'
 import FormDelete from '@/components/example/FormDelete.vue'
 import FormDeleteBulk from '@/components/example/FormDeleteBulk.vue'
 import ActionMenu from '~/components/example/ActionMenu.vue'
 import AudioList from '~/components/example/AudioList.vue'
 import ImageList from '~/components/example/ImageList.vue'
+import { Project } from '~/domain/models/project/project'
 import { getLinkToAnnotationPage } from '~/presenter/linkToAnnotationPage'
 import { ExampleDTO, ExampleListDTO } from '~/services/application/example/exampleData'
 
@@ -91,9 +89,8 @@ export default Vue.extend({
 
   layout: 'project',
 
-  middleware: ['check-auth', 'auth', 'setCurrentProject'],
-
-  validate({ params, query }: NuxtAppOptions) {
+  validate({ params, query }) {
+    // @ts-ignore
     return /^\d+$/.test(params.id) && /^\d+|$/.test(query.limit) && /^\d+|$/.test(query.offset)
   },
 
@@ -101,6 +98,7 @@ export default Vue.extend({
     return {
       dialogDelete: false,
       dialogDeleteAll: false,
+      project: {} as Project,
       item: {} as ExampleListDTO,
       selected: [] as ExampleDTO[],
       isLoading: false,
@@ -115,18 +113,21 @@ export default Vue.extend({
   },
 
   computed: {
-    ...mapGetters('projects', ['project']),
-
     canDelete(): boolean {
       return this.selected.length > 0
     },
-
     projectId(): string {
       return this.$route.params.id
     },
-
+    isImageTask(): boolean {
+      const imageTasks = ['ImageClassification', 'ImageCaptioning', 'BoundingBox', 'Segmentation']
+      return imageTasks.includes(this.project.projectType)
+    },
+    isAudioTask(): boolean {
+      return this.project.projectType === 'Speech2text'
+    },
     itemKey(): string {
-      if (this.project.isImageProject || this.project.isAudioProject) {
+      if (this.isImageTask || this.isAudioTask) {
         return 'filename'
       } else {
         return 'text'
@@ -142,6 +143,7 @@ export default Vue.extend({
   },
 
   async created() {
+    this.project = await this.$services.project.findById(this.projectId)
     const member = await this.$repositories.member.fetchMyRole(this.projectId)
     this.isProjectAdmin = member.isProjectAdmin
   },
@@ -153,28 +155,21 @@ export default Vue.extend({
       this.dialogDelete = false
       this.selected = []
     },
-
     async removeAll() {
       await this.$services.example.bulkDelete(this.projectId, [])
       this.$fetch()
       this.dialogDeleteAll = false
       this.selected = []
     },
-
     updateQuery(query: object) {
       this.$router.push(query)
     },
-
     movePage(query: object) {
       const link = getLinkToAnnotationPage(this.projectId, this.project.projectType)
       this.updateQuery({
         path: this.localePath(link),
         query
       })
-    },
-
-    editItem(item: ExampleDTO) {
-      this.$router.push(`dataset/${item.id}/edit`)
     }
   }
 })

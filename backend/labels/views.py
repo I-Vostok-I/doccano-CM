@@ -15,6 +15,7 @@ from .serializers import (
     SegmentationSerializer,
     SpanSerializer,
     TextLabelSerializer,
+    TraitSerializer
 )
 from labels.models import (
     BoundingBox,
@@ -24,6 +25,7 @@ from labels.models import (
     Segmentation,
     Span,
     TextLabel,
+    Trait
 )
 from projects.models import Project
 from projects.permissions import IsProjectMember
@@ -121,6 +123,15 @@ class RelationList(BaseListAPI):
 class RelationDetail(BaseDetailAPI):
     queryset = Relation.objects.all()
     serializer_class = RelationSerializer
+
+class TraitList(BaseListAPI):
+    label_class = Trait
+    serializer_class = TraitSerializer
+
+
+class TraitDetail(BaseDetailAPI):
+    queryset = Trait.objects.all()
+    serializer_class = TraitSerializer
 
 
 class BoundingBoxListAPI(BaseListAPI):

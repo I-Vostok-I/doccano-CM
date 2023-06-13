@@ -6,10 +6,11 @@ from pydantic import UUID4, BaseModel, ConstrainedStr, NonNegativeInt, root_vali
 
 from .label_types import LabelTypes
 from examples.models import Example
-from label_types.models import CategoryType, LabelType, RelationType, SpanType
+from label_types.models import CategoryType, LabelType, RelationType, TraitType, SpanType
 from labels.models import Category as CategoryModel
 from labels.models import Label as LabelModel
 from labels.models import Relation as RelationModel
+from labels.models import Trait as TraitModel
 from labels.models import Span as SpanModel
 from labels.models import TextLabel as TextLabelModel
 from projects.models import Project
@@ -142,6 +143,30 @@ class RelationLabel(Label):
             user=user,
             example=example,
             type=types[self.type],
-            from_id=kwargs["id_to_span"][(self.from_id, str(self.example_uuid))],
-            to_id=kwargs["id_to_span"][(self.to_id, str(self.example_uuid))],
+            from_id=kwargs["id_to_span"][self.from_id],
+            to_id=kwargs["id_to_span"][self.to_id],
+        )
+
+
+class TraitLabel(Label):
+    entity_id: int
+    type: NonEmptyStr
+
+    def __lt__(self, other):
+        return self.entity_id < other.entity_id
+
+    @classmethod
+    def parse(cls, example_uuid: UUID4, obj: Any):
+        return cls(example_uuid=example_uuid, **obj)
+
+    def create_type(self, project: Project) -> Optional[LabelType]:
+        return TraitType(text=self.type, project=project)
+
+    def create(self, user, example: Example, types: LabelTypes, **kwargs):
+        return TraitModel(
+            uuid=self.uuid,
+            user=user,
+            example=example,
+            type=types[self.type],
+            entity_id=kwargs["id_to_span"][self.entity_id],
         )

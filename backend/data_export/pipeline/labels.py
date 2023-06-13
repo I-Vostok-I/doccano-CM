@@ -13,6 +13,7 @@ from data_export.models import (
     ExportedExample,
     ExportedLabel,
     ExportedRelation,
+    ExportedTrait,
     ExportedSegmentation,
     ExportedSpan,
     ExportedText,
@@ -51,6 +52,12 @@ class Spans(Labels):
 class Relations(Labels):
     label_class = ExportedRelation
     column = "relations"
+    fields = ("example", "type")
+
+
+class Traits(Labels):
+    label_class = ExportedTrait
+    column = "traits"
     fields = ("example", "type")
 
 

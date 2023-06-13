@@ -1,5 +1,4 @@
 import abc
-import uuid
 
 from django.conf import settings
 from django.contrib.auth.models import User
@@ -10,17 +9,26 @@ from polymorphic.models import PolymorphicModel
 
 from roles.models import Role
 
-
-class ProjectType(models.TextChoices):
-    DOCUMENT_CLASSIFICATION = "DocumentClassification"
-    SEQUENCE_LABELING = "SequenceLabeling"
-    SEQ2SEQ = "Seq2seq"
-    INTENT_DETECTION_AND_SLOT_FILLING = "IntentDetectionAndSlotFilling"
-    SPEECH2TEXT = "Speech2text"
-    IMAGE_CLASSIFICATION = "ImageClassification"
-    BOUNDING_BOX = "BoundingBox"
-    SEGMENTATION = "Segmentation"
-    IMAGE_CAPTIONING = "ImageCaptioning"
+DOCUMENT_CLASSIFICATION = "DocumentClassification"
+SEQUENCE_LABELING = "SequenceLabeling"
+SEQ2SEQ = "Seq2seq"
+SPEECH2TEXT = "Speech2text"
+IMAGE_CLASSIFICATION = "ImageClassification"
+BOUNDING_BOX = "BoundingBox"
+SEGMENTATION = "Segmentation"
+IMAGE_CAPTIONING = "ImageCaptioning"
+INTENT_DETECTION_AND_SLOT_FILLING = "IntentDetectionAndSlotFilling"
+PROJECT_CHOICES = (
+    (DOCUMENT_CLASSIFICATION, "document classification"),
+    (SEQUENCE_LABELING, "sequence labeling"),
+    (SEQ2SEQ, "sequence to sequence"),
+    (INTENT_DETECTION_AND_SLOT_FILLING, "intent detection and slot filling"),
+    (SPEECH2TEXT, "speech to text"),
+    (IMAGE_CLASSIFICATION, "image classification"),
+    (BOUNDING_BOX, "bounding box"),
+    (SEGMENTATION, "segmentation"),
+    (IMAGE_CAPTIONING, "image captioning"),
+)
 
 
 class Project(PolymorphicModel):
@@ -34,11 +42,10 @@ class Project(PolymorphicModel):
         on_delete=models.SET_NULL,
         null=True,
     )
-    project_type = models.CharField(max_length=30, choices=ProjectType.choices)
+    project_type = models.CharField(max_length=30, choices=PROJECT_CHOICES)
     random_order = models.BooleanField(default=False)
     collaborative_annotation = models.BooleanField(default=False)
     single_class_classification = models.BooleanField(default=False)
-    allow_member_to_create_label_type = models.BooleanField(default=False)
 
     def add_admin(self):
         admin_role = Role.objects.get(name=settings.ROLE_PROJECT_ADMIN)
@@ -53,53 +60,30 @@ class Project(PolymorphicModel):
     def is_text_project(self) -> bool:
         return False
 
-    def clone(self) -> "Project":
-        """Clone the project.
-        See https://docs.djangoproject.com/en/4.2/topics/db/queries/#copying-model-instances
+    @property
+    def can_define_label(self) -> bool:
+        """Whether or not the project can define label(ignoring the type of label)"""
+        return False
 
-        Returns:
-            The cloned project.
-        """
-        project = Project.objects.get(pk=self.pk)
-        project.pk = None
-        project.id = None
-        project._state.adding = True
-        project.save()
+    @property
+    def can_define_relation(self) -> bool:
+        """Whether or not the project can define relation."""
+        return False
 
-        def bulk_clone(queryset: models.QuerySet, field_initializers: dict = None):
-            """Clone the queryset.
+    @property
+    def can_define_trait(self) -> bool:
+        """Whether or not the project can define trait."""
+        return False
 
-            Args:
-                queryset: The queryset to clone.
-                field_initializers: The field initializers.
-            """
-            if field_initializers is None:
-                field_initializers = {}
-            items = []
-            for item in queryset:
-                item.id = None
-                item.pk = None
-                for field, value_or_callable in field_initializers.items():
-                    if callable(value_or_callable):
-                        value_or_callable = value_or_callable()
-                    setattr(item, field, value_or_callable)
-                item.project = project
-                item._state.adding = True
-                items.append(item)
-            queryset.model.objects.bulk_create(items)
+    @property
+    def can_define_category(self) -> bool:
+        """Whether or not the project can define category."""
+        return False
 
-        bulk_clone(self.role_mappings.all())
-        bulk_clone(self.tags.all())
-
-        # clone examples
-        bulk_clone(self.examples.all(), field_initializers={"uuid": uuid.uuid4})
-
-        # clone label types
-        bulk_clone(self.categorytype_set.all())
-        bulk_clone(self.spantype_set.all())
-        bulk_clone(self.relationtype_set.all())
-
-        return project
+    @property
+    def can_define_span(self) -> bool:
+        """Whether or not the project can define span."""
+        return False
 
     def __str__(self):
         return self.name
@@ -110,14 +94,31 @@ class TextClassificationProject(Project):
     def is_text_project(self) -> bool:
         return True
 
+    @property
+    def can_define_label(self) -> bool:
+        return True
+
+    @property
+    def can_define_category(self) -> bool:
+        return True
+
 
 class SequenceLabelingProject(Project):
     allow_overlapping = models.BooleanField(default=False)
     grapheme_mode = models.BooleanField(default=False)
     use_relation = models.BooleanField(default=False)
+    use_trait = models.BooleanField(default=False)
 
     @property
     def is_text_project(self) -> bool:
+        return True
+
+    @property
+    def can_define_label(self) -> bool:
+        return True
+
+    @property
+    def can_define_span(self) -> bool:
         return True
 
 
@@ -132,6 +133,18 @@ class IntentDetectionAndSlotFillingProject(Project):
     def is_text_project(self) -> bool:
         return True
 
+    @property
+    def can_define_label(self) -> bool:
+        return True
+
+    @property
+    def can_define_category(self) -> bool:
+        return True
+
+    @property
+    def can_define_span(self) -> bool:
+        return True
+
 
 class Speech2textProject(Project):
     @property
@@ -144,17 +157,41 @@ class ImageClassificationProject(Project):
     def is_text_project(self) -> bool:
         return False
 
+    @property
+    def can_define_label(self) -> bool:
+        return True
+
+    @property
+    def can_define_category(self) -> bool:
+        return True
+
 
 class BoundingBoxProject(Project):
     @property
     def is_text_project(self) -> bool:
         return False
 
+    @property
+    def can_define_label(self) -> bool:
+        return True
+
+    @property
+    def can_define_category(self) -> bool:
+        return True
+
 
 class SegmentationProject(Project):
     @property
     def is_text_project(self) -> bool:
         return False
+
+    @property
+    def can_define_label(self) -> bool:
+        return True
+
+    @property
+    def can_define_category(self) -> bool:
+        return True
 
 
 class ImageCaptioningProject(Project):

@@ -4,9 +4,6 @@
       <v-btn class="text-capitalize" color="primary" @click.stop="$router.push('projects/create')">
         {{ $t('generic.create') }}
       </v-btn>
-      <v-btn class="text-capitalize ms-2" color="primary" :disabled="!canClone" @click.stop="clone">
-        Clone
-      </v-btn>
       <v-btn
         class="text-capitalize ms-2"
         :disabled="!canDelete"
@@ -69,10 +66,6 @@ export default Vue.extend({
     ...mapGetters('auth', ['isStaff']),
     canDelete(): boolean {
       return this.selected.length > 0
-    },
-
-    canClone(): boolean {
-      return this.selected.length === 1
     }
   },
 
@@ -89,12 +82,6 @@ export default Vue.extend({
       this.$fetch()
       this.dialogDelete = false
       this.selected = []
-    },
-
-    async clone() {
-      const project = await this.$services.project.clone(this.selected[0])
-      this.selected = []
-      this.$router.push(`/projects/${project.id}/settings`)
     },
 
     updateQuery(query: object) {

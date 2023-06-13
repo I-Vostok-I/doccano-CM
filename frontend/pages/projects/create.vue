@@ -12,11 +12,6 @@
           v-model="editedItem.exclusiveCategories"
           :label="$t('overview.allowSingleLabel')"
         />
-        <v-checkbox
-          v-if="_canDefineLabel"
-          v-model="editedItem.allowMemberToCreateLabelType"
-          label="Allow project members to create label types"
-        />
         <template v-if="isSequenceLabelingProject">
           <v-checkbox v-model="editedItem.allowOverlappingSpans" label="Allow overlapping spans" />
           <v-img
@@ -26,6 +21,7 @@
             contain
           />
           <v-checkbox v-model="editedItem.useRelation" label="Use relation labeling" />
+          <v-checkbox v-model="editedItem.useTrait" label="Use trait labeling" />
           <v-checkbox v-model="editedItem.enableGraphemeMode">
             <template #label>
               <div>
@@ -59,9 +55,8 @@
         style="text-transform: none"
         outlined
         @click="create"
-      >
-        {{ $t('generic.create') }}
-      </v-btn>
+        v-text="$t('generic.create')"
+      />
     </v-card-actions>
   </v-card>
 </template>
@@ -77,8 +72,7 @@ import TagList from '~/components/project/TagList.vue'
 import {
   DocumentClassification,
   ImageClassification,
-  SequenceLabeling,
-  canDefineLabel
+  SequenceLabeling
 } from '~/domain/models/project/project'
 
 const initializeProject = () => {
@@ -92,9 +86,9 @@ const initializeProject = () => {
     allowOverlappingSpans: false,
     enableGraphemeMode: false,
     useRelation: false,
+    useTrait: false,
     tags: [] as string[],
-    guideline: '',
-    allowMemberToCreateLabelType: false
+    guideline: ''
   }
 }
 
@@ -125,9 +119,6 @@ export default Vue.extend({
     },
     isSequenceLabelingProject(): boolean {
       return this.editedItem.projectType === SequenceLabeling
-    },
-    _canDefineLabel(): boolean {
-      return canDefineLabel(this.editedItem.projectType as any)
     }
   },
 

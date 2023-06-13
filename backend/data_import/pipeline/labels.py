@@ -1,6 +1,6 @@
 import abc
 from itertools import groupby
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
 from .examples import Examples
 from .label import Label
@@ -8,6 +8,7 @@ from .label_types import LabelTypes
 from labels.models import Category as CategoryModel
 from labels.models import Label as LabelModel
 from labels.models import Relation as RelationModel
+from labels.models import Trait as TraitModel
 from labels.models import Span as SpanModel
 from labels.models import TextLabel as TextLabelModel
 from projects.models import Project
@@ -70,11 +71,11 @@ class Spans(Labels):
         self.labels = spans
 
     @property
-    def id_to_span(self) -> Dict[Tuple[int, str], SpanModel]:
-        uuids = [str(span.uuid) for span in self.labels]
-        spans = SpanModel.objects.filter(uuid__in=uuids)
+    def id_to_span(self) -> Dict[int, SpanModel]:
+        span_uuids = [str(label.uuid) for label in self.labels]
+        spans = SpanModel.objects.filter(uuid__in=span_uuids)
         uuid_to_span = {span.uuid: span for span in spans}
-        return {(span.id, str(span.example_uuid)): uuid_to_span[span.uuid] for span in self.labels}
+        return {span.id: uuid_to_span[span.uuid] for span in self.labels}
 
 
 class Texts(Labels):
@@ -83,6 +84,14 @@ class Texts(Labels):
 
 class Relations(Labels):
     label_model = RelationModel
+
+    def save(self, user, examples: Examples, **kwargs):
+        id_to_span = kwargs["spans"].id_to_span
+        super().save(user, examples, id_to_span=id_to_span)
+
+
+class Traits(Labels):
+    label_model = TraitModel
 
     def save(self, user, examples: Examples, **kwargs):
         id_to_span = kwargs["spans"].id_to_span

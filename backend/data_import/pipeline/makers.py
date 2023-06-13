@@ -1,4 +1,4 @@
-from typing import List, Optional, Type
+from typing import List, Optional, Type, Dict
 
 import pandas as pd
 
@@ -116,3 +116,28 @@ class LabelMaker:
     def errors(self) -> List[FileParseException]:
         self._errors.sort(key=lambda error: error.line_num)
         return self._errors
+
+
+class AwsCmMaker:
+    def __init__(self, column: str):
+        self.column = column
+        self.errors: List[FileParseException] = []
+
+    def make(self, df: pd.DataFrame) -> Dict:
+        if not self.check_column_existence(df):
+            return []
+        df_req = df.explode(self.column)
+        df_req = df_req[[UUID_COLUMN, "model", self.column]]
+        df_req.dropna(subset=[self.column], inplace=True)
+        requests = []
+        for row in df_req.to_dict(orient="records"):
+            requests.append(row)
+        return requests
+
+    def check_column_existence(self, df: pd.DataFrame) -> bool:
+        message = f"Column {self.column} not found in the file"
+        if self.column not in df.columns:
+            for filename in df[UPLOAD_NAME_COLUMN].unique():
+                self._errors.append(FileParseException(filename, 0, message))
+            return False
+        return True

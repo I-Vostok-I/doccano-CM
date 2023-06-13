@@ -29,11 +29,8 @@ class CRUDMixin(APITestCase):
         self.assertEqual(response.status_code, expected)
         return response
 
-    def assert_delete(self, user=None, expected=status.HTTP_403_FORBIDDEN, data=None):
+    def assert_delete(self, user=None, expected=status.HTTP_403_FORBIDDEN):
         if user:
             self.client.force_login(user)
-
-        if data is None:
-            data = {}
-        response = self.client.delete(self.url, data=data)
+        response = self.client.delete(self.url)
         self.assertEqual(response.status_code, expected)

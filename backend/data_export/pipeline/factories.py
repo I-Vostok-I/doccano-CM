@@ -14,9 +14,20 @@ from .formatters import (
     RenameFormatter,
     TupledSpanFormatter,
 )
-from .labels import BoundingBoxes, Categories, Labels, Relations, Segments, Spans, Texts
+from .labels import BoundingBoxes, Categories, Labels, Relations, Segments, Spans, Texts, Traits
 from data_export.models import DATA, ExportedExample
-from projects.models import Project, ProjectType
+from projects.models import (
+    BOUNDING_BOX,
+    DOCUMENT_CLASSIFICATION,
+    IMAGE_CAPTIONING,
+    IMAGE_CLASSIFICATION,
+    INTENT_DETECTION_AND_SLOT_FILLING,
+    SEGMENTATION,
+    SEQ2SEQ,
+    SEQUENCE_LABELING,
+    SPEECH2TEXT,
+    Project,
+)
 
 
 def create_writer(file_format: str) -> writers.Writer:
@@ -33,12 +44,14 @@ def create_writer(file_format: str) -> writers.Writer:
 
 def create_formatter(project: Project, file_format: str) -> List[Formatter]:
     use_relation = getattr(project, "use_relation", False)
+    use_trait = getattr(project, "use_trait", False)
     # text tasks
     mapper_text_classification = {DATA: "text", Categories.column: "label"}
     mapper_sequence_labeling = {DATA: "text", Spans.column: "label"}
     mapper_seq2seq = {DATA: "text", Texts.column: "label"}
     mapper_intent_detection = {DATA: "text", Categories.column: "cats"}
     mapper_relation_extraction = {DATA: "text"}
+    mapper_trait_extraction = {DATA: "text"}
 
     # image tasks
     mapper_image_classification = {DATA: "filename", Categories.column: "label"}
@@ -50,7 +63,7 @@ def create_formatter(project: Project, file_format: str) -> List[Formatter]:
     mapper_speech2text = {DATA: "filename", Texts.column: "label"}
 
     mapping: Dict[str, Dict[str, List[Formatter]]] = {
-        ProjectType.DOCUMENT_CLASSIFICATION: {
+        DOCUMENT_CLASSIFICATION: {
             CSV.name: [
                 JoinedCategoryFormatter(Categories.column),
                 JoinedCategoryFormatter(Comments.column),
@@ -68,21 +81,22 @@ def create_formatter(project: Project, file_format: str) -> List[Formatter]:
             ],
             FastText.name: [FastTextCategoryFormatter(Categories.column)],
         },
-        ProjectType.SEQUENCE_LABELING: {
+        SEQUENCE_LABELING: {
             JSONL.name: [
                 DictFormatter(Spans.column),
                 DictFormatter(Relations.column),
                 DictFormatter(Comments.column),
                 RenameFormatter(**mapper_relation_extraction),
+                RenameFormatter(**mapper_trait_extraction),
             ]
-            if use_relation
+            if use_relation or use_trait
             else [
                 TupledSpanFormatter(Spans.column),
                 ListedCategoryFormatter(Comments.column),
                 RenameFormatter(**mapper_sequence_labeling),
             ]
         },
-        ProjectType.SEQ2SEQ: {
+        SEQ2SEQ: {
             CSV.name: [
                 JoinedCategoryFormatter(Texts.column),
                 JoinedCategoryFormatter(Comments.column),
@@ -99,21 +113,21 @@ def create_formatter(project: Project, file_format: str) -> List[Formatter]:
                 RenameFormatter(**mapper_seq2seq),
             ],
         },
-        ProjectType.IMAGE_CLASSIFICATION: {
+        IMAGE_CLASSIFICATION: {
             JSONL.name: [
                 ListedCategoryFormatter(Categories.column),
                 ListedCategoryFormatter(Comments.column),
                 RenameFormatter(**mapper_image_classification),
             ],
         },
-        ProjectType.SPEECH2TEXT: {
+        SPEECH2TEXT: {
             JSONL.name: [
                 ListedCategoryFormatter(Texts.column),
                 ListedCategoryFormatter(Comments.column),
                 RenameFormatter(**mapper_speech2text),
             ],
         },
-        ProjectType.INTENT_DETECTION_AND_SLOT_FILLING: {
+        INTENT_DETECTION_AND_SLOT_FILLING: {
             JSONL.name: [
                 ListedCategoryFormatter(Categories.column),
                 TupledSpanFormatter(Spans.column),
@@ -121,21 +135,21 @@ def create_formatter(project: Project, file_format: str) -> List[Formatter]:
                 RenameFormatter(**mapper_intent_detection),
             ]
         },
-        ProjectType.BOUNDING_BOX: {
+        BOUNDING_BOX: {
             JSONL.name: [
                 DictFormatter(BoundingBoxes.column),
                 DictFormatter(Comments.column),
                 RenameFormatter(**mapper_bounding_box),
             ]
         },
-        ProjectType.SEGMENTATION: {
+        SEGMENTATION: {
             JSONL.name: [
                 DictFormatter(Segments.column),
                 DictFormatter(Comments.column),
                 RenameFormatter(**mapper_segmentation),
             ]
         },
-        ProjectType.IMAGE_CAPTIONING: {
+        IMAGE_CAPTIONING: {
             JSONL.name: [
                 ListedCategoryFormatter(Texts.column),
                 ListedCategoryFormatter(Comments.column),
@@ -148,16 +162,20 @@ def create_formatter(project: Project, file_format: str) -> List[Formatter]:
 
 def select_label_collection(project: Project) -> List[Type[Labels]]:
     use_relation = getattr(project, "use_relation", False)
+    use_trait = getattr(project, "user_trait", False)
     mapping: Dict[str, List[Type[Labels]]] = {
-        ProjectType.DOCUMENT_CLASSIFICATION: [Categories],
-        ProjectType.SEQUENCE_LABELING: [Spans, Relations] if use_relation else [Spans],
-        ProjectType.SEQ2SEQ: [Texts],
-        ProjectType.IMAGE_CLASSIFICATION: [Categories],
-        ProjectType.SPEECH2TEXT: [Texts],
-        ProjectType.INTENT_DETECTION_AND_SLOT_FILLING: [Categories, Spans],
-        ProjectType.BOUNDING_BOX: [BoundingBoxes],
-        ProjectType.SEGMENTATION: [Segments],
-        ProjectType.IMAGE_CAPTIONING: [Texts],
+        DOCUMENT_CLASSIFICATION: [Categories],
+        SEQUENCE_LABELING: [Spans, Relations, Traits] if use_relation and use_trait else 
+            [Spans, Relations] if use_relation else 
+            [Spans, Traits] if use_trait else
+            [Spans],
+        SEQ2SEQ: [Texts],
+        IMAGE_CLASSIFICATION: [Categories],
+        SPEECH2TEXT: [Texts],
+        INTENT_DETECTION_AND_SLOT_FILLING: [Categories, Spans],
+        BOUNDING_BOX: [BoundingBoxes],
+        SEGMENTATION: [Segments],
+        IMAGE_CAPTIONING: [Texts],
     }
     return mapping[project.project_type]
 

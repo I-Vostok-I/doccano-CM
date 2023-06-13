@@ -2,7 +2,6 @@ import json
 import re
 
 from django.db import IntegrityError, transaction
-from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import generics, status
 from rest_framework.exceptions import ParseError
@@ -12,19 +11,15 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .exceptions import LabelValidationError
-from .models import CategoryType, LabelType, RelationType, SpanType
+from .models import CategoryType, LabelType, RelationType, SpanType, TraitType
 from .serializers import (
     CategoryTypeSerializer,
     LabelSerializer,
     RelationTypeSerializer,
     SpanTypeSerializer,
+    TraitTypeSerializer
 )
-from projects.models import Project
-from projects.permissions import (
-    IsProjectAdmin,
-    IsProjectMember,
-    IsProjectStaffAndReadOnly,
-)
+from projects.permissions import IsProjectAdmin, IsProjectStaffAndReadOnly
 
 
 def camel_to_snake(name):
@@ -41,14 +36,7 @@ class LabelList(generics.ListCreateAPIView):
     filter_backends = [DjangoFilterBackend]
     serializer_class = LabelSerializer
     pagination_class = None
-
-    def get_permissions(self):
-        project = get_object_or_404(Project, pk=self.kwargs["project_id"])
-        if project.allow_member_to_create_label_type and self.request.method == "POST":
-            self.permission_classes = [IsAuthenticated & IsProjectMember]
-        else:
-            self.permission_classes = [IsAuthenticated & (IsProjectAdmin | IsProjectStaffAndReadOnly)]
-        return super().get_permissions()
+    permission_classes = [IsAuthenticated & (IsProjectAdmin | IsProjectStaffAndReadOnly)]
 
     def get_queryset(self):
         return self.model.objects.filter(project=self.kwargs["project_id"])
@@ -97,6 +85,17 @@ class RelationTypeDetail(generics.RetrieveUpdateDestroyAPIView):
     lookup_url_kwarg = "label_id"
     permission_classes = [IsAuthenticated & (IsProjectAdmin | IsProjectStaffAndReadOnly)]
 
+class TraitTypeList(LabelList):
+    model = TraitType
+    serializer_class = TraitTypeSerializer
+
+
+class TraitTypeDetail(generics.RetrieveUpdateDestroyAPIView):
+    queryset = TraitType.objects.all()
+    serializer_class = TraitTypeSerializer
+    lookup_url_kwarg = "label_id"
+    permission_classes = [IsAuthenticated & (IsProjectAdmin | IsProjectStaffAndReadOnly)]
+
 
 class LabelUploadAPI(APIView):
     parser_classes = (MultiPartParser,)
@@ -130,3 +129,7 @@ class SpanTypeUploadAPI(LabelUploadAPI):
 
 class RelationTypeUploadAPI(LabelUploadAPI):
     serializer_class = RelationTypeSerializer
+
+
+class TraitTypeUploadAPI(LabelUploadAPI):
+    serializer_class = TraitTypeSerializer

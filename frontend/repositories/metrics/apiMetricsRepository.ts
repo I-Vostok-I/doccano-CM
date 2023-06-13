@@ -22,6 +22,12 @@ export class APIMetricsRepository {
     return response.data
   }
 
+  async fetchTraitDistribution(projectId: string): Promise<Distribution> {
+    const url = `/projects/${projectId}/metrics/trait-distribution`
+    const response = await this.request.get(url)
+    return response.data
+  }
+
   async fetchMemberProgress(projectId: string): Promise<Progress> {
     const url = `/projects/${projectId}/metrics/member-progress`
     const response = await this.request.get(url)

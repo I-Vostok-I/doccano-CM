@@ -15,7 +15,7 @@ from labels.models import Category as CategoryModel
 from labels.models import Relation as RelationModel
 from labels.models import Span as SpanModel
 from labels.models import TextLabel as TextModel
-from projects.models import ProjectType
+from projects.models import DOCUMENT_CLASSIFICATION, SEQ2SEQ, SEQUENCE_LABELING
 from projects.tests.utils import prepare_project
 
 
@@ -25,11 +25,11 @@ class TestLabel(TestCase):
     def setUp(self):
         self.project = prepare_project(self.task)
         self.user = self.project.admin
-        self.example = mommy.make("Example", project=self.project.item, text="hello world")
+        self.example = mommy.make("Example", project=self.project.item)
 
 
 class TestCategoryLabel(TestLabel):
-    task = ProjectType.DOCUMENT_CLASSIFICATION
+    task = DOCUMENT_CLASSIFICATION
 
     def test_comparison(self):
         category1 = CategoryLabel(label="A", example_uuid=uuid.uuid4())
@@ -61,7 +61,7 @@ class TestCategoryLabel(TestLabel):
 
 
 class TestSpanLabel(TestLabel):
-    task = ProjectType.SEQUENCE_LABELING
+    task = SEQUENCE_LABELING
 
     def test_comparison(self):
         span1 = SpanLabel(label="A", start_offset=0, end_offset=1, example_uuid=uuid.uuid4())
@@ -110,7 +110,7 @@ class TestSpanLabel(TestLabel):
 
 
 class TestTextLabel(TestLabel):
-    task = ProjectType.SEQ2SEQ
+    task = SEQ2SEQ
 
     def test_comparison(self):
         text1 = TextLabel(text="A", example_uuid=uuid.uuid4())
@@ -140,7 +140,7 @@ class TestTextLabel(TestLabel):
 
 
 class TestRelationLabel(TestLabel):
-    task = ProjectType.SEQUENCE_LABELING
+    task = SEQUENCE_LABELING
 
     def test_comparison(self):
         relation1 = RelationLabel(type="A", from_id=0, to_id=1, example_uuid=uuid.uuid4())
@@ -166,12 +166,12 @@ class TestRelationLabel(TestLabel):
         self.assertEqual(relation_type.text, "A")
 
     def test_create(self):
-        relation = RelationLabel(type="A", from_id=0, to_id=1, example_uuid=self.example.uuid)
+        relation = RelationLabel(type="A", from_id=0, to_id=1, example_uuid=uuid.uuid4())
         types = MagicMock()
         types.__getitem__.return_value = mommy.make(RelationType, project=self.project.item)
         id_to_span = {
-            (0, str(self.example.uuid)): mommy.make(SpanModel, start_offset=0, end_offset=1, example=self.example),
-            (1, str(self.example.uuid)): mommy.make(SpanModel, start_offset=2, end_offset=3, example=self.example),
+            0: mommy.make(SpanModel, start_offset=0, end_offset=1),
+            1: mommy.make(SpanModel, start_offset=2, end_offset=3),
         }
         relation_model = relation.create(self.user, self.example, types, id_to_span=id_to_span)
         self.assertIsInstance(relation_model, RelationModel)

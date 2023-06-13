@@ -5,6 +5,7 @@
 <script lang="ts">
 import Vue from 'vue'
 import FormImport from '~/components/label/FormImport.vue'
+import { Project } from '~/domain/models/project/project'
 
 export default Vue.extend({
   components: {
@@ -13,15 +14,14 @@ export default Vue.extend({
 
   layout: 'project',
 
-  middleware: ['check-auth', 'auth', 'setCurrentProject', 'isProjectAdmin'],
-
-  validate({ params, query, store }) {
-    if (!['category', 'span', 'relation'].includes(query.type as string)) {
+  validate({ params, query, app }) {
+    if (!['category', 'span', 'relation', 'trait'].includes(query.type as string)) {
       return false
     }
     if (/^\d+$/.test(params.id)) {
-      const project = store.getters['projects/project']
-      return project.canDefineLabel
+      return app.$services.project.findById(params.id).then((res: Project) => {
+        return res.canDefineLabel
+      })
     }
     return false
   },
@@ -43,8 +43,10 @@ export default Vue.extend({
         return this.$services.categoryType
       } else if (type === 'span') {
         return this.$services.spanType
-      } else {
+      } else if (type === 'relation') {
         return this.$services.relationType
+      } else {
+        return this.$services.traitType
       }
     }
   },
@@ -54,7 +56,7 @@ export default Vue.extend({
       try {
         await this.service.upload(this.projectId, file)
         this.$router.push(`/projects/${this.projectId}/labels`)
-      } catch (e: any) {
+      } catch (e) {
         this.errorMessage = e.message
       }
     },

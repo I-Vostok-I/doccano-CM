@@ -1,12 +1,13 @@
 import abc
 
 from django.core.exceptions import ValidationError
+from django.db import IntegrityError
 from django.test import TestCase
 from model_mommy import mommy
 
 from label_types.models import SpanType
 from labels.models import Span
-from projects.models import ProjectType
+from projects.models import SEQUENCE_LABELING
 from projects.tests.utils import prepare_project
 
 
@@ -17,7 +18,7 @@ class TestSpanLabeling(abc.ABC, TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.project = prepare_project(
-            ProjectType.SEQUENCE_LABELING, allow_overlapping=cls.overlapping, collaborative_annotation=cls.collaborative
+            SEQUENCE_LABELING, allow_overlapping=cls.overlapping, collaborative_annotation=cls.collaborative
         )
         cls.example = mommy.make("Example", project=cls.project.item)
         cls.label_type = mommy.make("SpanType", project=cls.project.item)
@@ -136,20 +137,20 @@ class TestCollaborativeOverlappingSpanLabeling(TestSpanLabeling):
 
 class TestSpan(TestCase):
     def setUp(self):
-        self.project = prepare_project(ProjectType.SEQUENCE_LABELING, allow_overlapping=False)
+        self.project = prepare_project(SEQUENCE_LABELING, allow_overlapping=False)
         self.example = mommy.make("Example", project=self.project.item)
         self.user = self.project.admin
 
     def test_start_offset_is_not_negative(self):
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(IntegrityError):
             mommy.make("Span", start_offset=-1, end_offset=0)
 
     def test_end_offset_is_not_negative(self):
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(IntegrityError):
             mommy.make("Span", start_offset=-2, end_offset=-1)
 
     def test_start_offset_is_less_than_end_offset(self):
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(IntegrityError):
             mommy.make("Span", start_offset=0, end_offset=0)
 
     def test_unique_constraint(self):
@@ -167,7 +168,7 @@ class TestSpan(TestCase):
                 )
 
     def test_unique_constraint_if_overlapping_is_allowed(self):
-        project = prepare_project(ProjectType.SEQUENCE_LABELING, allow_overlapping=True)
+        project = prepare_project(SEQUENCE_LABELING, allow_overlapping=True)
         example = mommy.make("Example", project=project.item)
         user = project.admin
         mommy.make("Span", example=example, start_offset=5, end_offset=10, user=user)
@@ -183,7 +184,7 @@ class TestSpan(TestCase):
 
 class TestSpanWithoutCollaborativeMode(TestCase):
     def setUp(self):
-        self.project = prepare_project(ProjectType.SEQUENCE_LABELING, False, allow_overlapping=False)
+        self.project = prepare_project(SEQUENCE_LABELING, False, allow_overlapping=False)
         self.example = mommy.make("Example", project=self.project.item)
 
     def test_allow_users_to_create_same_spans(self):
@@ -193,14 +194,14 @@ class TestSpanWithoutCollaborativeMode(TestCase):
 
 class TestSpanWithCollaborativeMode(TestCase):
     def test_deny_users_to_create_same_spans(self):
-        project = prepare_project(ProjectType.SEQUENCE_LABELING, True, allow_overlapping=False)
+        project = prepare_project(SEQUENCE_LABELING, True, allow_overlapping=False)
         example = mommy.make("Example", project=project.item)
         mommy.make("Span", example=example, start_offset=5, end_offset=10, user=project.admin)
         with self.assertRaises(ValidationError):
             mommy.make("Span", example=example, start_offset=5, end_offset=10, user=project.approver)
 
     def test_allow_users_to_create_same_spans_if_overlapping_is_allowed(self):
-        project = prepare_project(ProjectType.SEQUENCE_LABELING, True, allow_overlapping=True)
+        project = prepare_project(SEQUENCE_LABELING, True, allow_overlapping=True)
         example = mommy.make("Example", project=project.item)
         mommy.make("Span", example=example, start_offset=5, end_offset=10, user=project.admin)
         mommy.make("Span", example=example, start_offset=5, end_offset=10, user=project.approver)
@@ -208,7 +209,7 @@ class TestSpanWithCollaborativeMode(TestCase):
 
 class TestLabelDistribution(TestCase):
     def setUp(self):
-        self.project = prepare_project(ProjectType.SEQUENCE_LABELING, allow_overlapping=False)
+        self.project = prepare_project(SEQUENCE_LABELING, allow_overlapping=False)
         self.example = mommy.make("Example", project=self.project.item)
         self.user = self.project.admin
 

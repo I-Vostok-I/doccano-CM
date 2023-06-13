@@ -69,6 +69,7 @@
 import Vue from 'vue'
 import { mdiPencil, mdiDelete } from '@mdi/js'
 import { labelNameRules } from '@/rules/index'
+import { SequenceLabeling } from '~/domain/models/project/project'
 
 export default Vue.extend({
   props: {
@@ -122,7 +123,24 @@ export default Vue.extend({
     if (project.projectType.endsWith('Classification')) {
       const labels = await this.$services.categoryType.list(this.$route.params.id)
       this.items = labels.map((item) => item.text)
-    } else {
+    }
+    else if (project.projectType === SequenceLabeling && project.useRelation && project.useTrait) {
+      const labels = [...await this.$services.spanType.list(this.$route.params.id),
+      ...await this.$services.relationType.list(this.$route.params.id),      
+      ...await this.$services.traitType.list(this.$route.params.id)]
+      this.items = labels.map((item) => item.text)   
+    }   
+    else if (project.projectType === SequenceLabeling && project.useRelation) {
+      const labels = [...await this.$services.spanType.list(this.$route.params.id),
+      ...await this.$services.relationType.list(this.$route.params.id)]
+      this.items = labels.map((item) => item.text)
+    }
+    else if (project.projectType === SequenceLabeling && project.useTrait) {
+      const labels = [...await this.$services.spanType.list(this.$route.params.id),
+      ...await this.$services.traitType.list(this.$route.params.id)]
+      this.items = labels.map((item) => item.text)
+    }
+    else {
       const labels = await this.$services.spanType.list(this.$route.params.id)
       this.items = labels.map((item) => item.text)
     }

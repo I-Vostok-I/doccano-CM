@@ -21,7 +21,7 @@ class ExampleList(generics.ListCreateAPIView):
     ordering_fields = ("created_at", "updated_at", "score")
     search_fields = ("text", "filename")
     model = Example
-    filterset_class = ExampleFilter
+    filter_class = ExampleFilter
 
     @property
     def project(self):

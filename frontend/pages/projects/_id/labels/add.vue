@@ -29,15 +29,14 @@ export default Vue.extend({
 
   layout: 'project',
 
-  middleware: ['check-auth', 'auth', 'setCurrentProject'],
-
-  validate({ params, query, store }) {
-    if (!['category', 'span', 'relation'].includes(query.type as string)) {
+  validate({ params, query, app }) {
+    if (!['category', 'span', 'relation', 'trait'].includes(query.type as string)) {
       return false
     }
     if (/^\d+$/.test(params.id)) {
-      const project = store.getters['projects/project'] as Project
-      return project.canDefineLabel
+      return app.$services.project.findById(params.id).then((res: Project) => {
+        return res.canDefineLabel
+      })
     }
     return false
   },
@@ -73,8 +72,10 @@ export default Vue.extend({
         return this.$services.categoryType
       } else if (type === 'span') {
         return this.$services.spanType
-      } else {
+      } else if (type === 'relation') {
         return this.$services.relationType
+      } else {
+        return this.$services.traitType
       }
     }
   },

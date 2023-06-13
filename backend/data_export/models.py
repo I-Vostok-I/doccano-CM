@@ -3,7 +3,7 @@ from typing import Any, Dict, Protocol, Tuple
 from django.db import models
 
 from examples.models import Comment, Example
-from labels.models import BoundingBox, Category, Relation, Segmentation, Span, TextLabel
+from labels.models import BoundingBox, Category, Relation, Trait, Segmentation, Span, TextLabel
 from projects.models import Project
 
 DATA = "data"
@@ -68,6 +68,14 @@ class ExportedSpan(Span):
 class ExportedRelation(Relation):
     def to_dict(self):
         return {"id": self.id, "from_id": self.from_id.id, "to_id": self.to_id.id, "type": self.type.text}
+
+    class Meta:
+        proxy = True
+
+
+class ExportedTrait(Trait):
+    def to_dict(self):
+        return {"id": self.id, "entity_id": self.entity_id, "type": self.type.text}
 
     class Meta:
         proxy = True

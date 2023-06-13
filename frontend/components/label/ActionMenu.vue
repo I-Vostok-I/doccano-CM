@@ -18,38 +18,25 @@ export default Vue.extend({
     ActionMenu
   },
 
-  props: {
-    addOnly: {
-      type: Boolean,
-      default: false
-    }
-  },
-
   computed: {
     items() {
-      const items = [
+      return [
         {
           title: this.$t('labels.createLabel'),
           icon: mdiPencil,
           event: 'create'
+        },
+        {
+          title: this.$t('labels.importLabels'),
+          icon: mdiUpload,
+          event: 'upload'
+        },
+        {
+          title: this.$t('labels.exportLabels'),
+          icon: mdiDownload,
+          event: 'download'
         }
       ]
-      if (this.addOnly) {
-        return items
-      } else {
-        return items.concat([
-          {
-            title: this.$t('labels.importLabels'),
-            icon: mdiUpload,
-            event: 'upload'
-          },
-          {
-            title: this.$t('labels.exportLabels'),
-            icon: mdiDownload,
-            event: 'download'
-          }
-        ])
-      }
     }
   }
 })

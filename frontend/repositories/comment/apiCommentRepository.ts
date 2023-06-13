@@ -28,10 +28,9 @@ export class APICommentRepository {
 
   async listAll(
     projectId: string,
-    { limit = '10', offset = '0', q = '', sortBy = '', sortDesc = '' }: SearchOption
+    { limit = '10', offset = '0', q = '' }: SearchOption
   ): Promise<Page<CommentItem>> {
-    const ordering = sortDesc === 'true' ? `-${sortBy}` : `${sortBy}`
-    const url = `/projects/${projectId}/comments?q=${q}&limit=${limit}&offset=${offset}&ordering=${ordering}`
+    const url = `/projects/${projectId}/comments?q=${q}&limit=${limit}&offset=${offset}`
     const response = await this.request.get(url)
     return new Page(
       response.data.count,

@@ -83,6 +83,13 @@ class RelationManager(LabelManager):
         return True
 
 
+class TraitManager(LabelManager):
+    label_type_field = "type"
+
+    def can_annotate(self, label, project) -> bool:
+        return True
+
+
 class BoundingBoxManager(LabelManager):
     def can_annotate(self, label, project) -> bool:
         return True

@@ -12,18 +12,27 @@ from .managers import (
     SegmentationManager,
     SpanManager,
     TextLabelManager,
+    TraitManager
 )
 from examples.models import Example
-from label_types.models import CategoryType, RelationType, SpanType
+from label_types.models import CategoryType, RelationType, SpanType, TraitType
 
 
 class Label(models.Model):
+    STATE_CHOICES = (
+        ('auto', 'Auto'),
+        ('added', 'Added'),
+        ('modified', 'Modified'),
+        ('removed', 'Removed')
+    )
+
     objects = LabelManager()
 
     uuid = models.UUIDField(default=uuid.uuid4, unique=True)
     prob = models.FloatField(default=0.0)
     manual = models.BooleanField(default=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
+    state = models.CharField(default='added', max_length=10, choices=STATE_CHOICES)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -128,6 +137,22 @@ class Relation(Label):
         if not same_example:
             raise ValidationError("You need to label the same example.")
         return super().clean()
+
+class Trait(Label):
+    objects = TraitManager()
+    example = models.ForeignKey(to=Example, on_delete=models.CASCADE, related_name="trait")
+    entity_id = models.ForeignKey(Span, on_delete=models.CASCADE, related_name="span_id")
+    type = models.ForeignKey(TraitType, on_delete=models.CASCADE)
+
+    def __str__(self):
+        text = self.example.text
+        entity_span = text[self.entity_id.start_offset : self.entity_id.end_offset]
+        type_text = self.type.text
+        return f"{entity_span} -> ({type_text})"
+
+    def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
+        self.full_clean()
+        super().save(force_insert, force_update, using, update_fields)
 
 
 class BoundingBox(Label):

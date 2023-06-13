@@ -24,16 +24,22 @@
             :entity-labels="spanTypes"
             :relations="relations"
             :relation-labels="relationTypes"
+            :traits="traits"
+            :trait-labels="traitTypes"
             :allow-overlapping="project.allowOverlappingSpans"
             :grapheme-mode="project.enableGraphemeMode"
             :selected-label="selectedLabel"
             :relation-mode="relationMode"
+            :trait-mode="traitMode"
             @addEntity="addSpan"
             @addRelation="addRelation"
+            @addTrait="addTrait"
             @click:entity="updateSpan"
             @click:relation="updateRelation"
+            @click:trait="updateTrait"
             @contextmenu:entity="deleteSpan"
             @contextmenu:relation="deleteRelation"
+            @contextmenu:trait="deleteTrait"
           />
         </div>
       </v-card>
@@ -50,12 +56,12 @@
         </v-card-title>
         <v-expand-transition>
           <v-card-text v-show="showLabelTypes">
-            <v-switch v-if="useRelationLabeling" v-model="relationMode">
-              <template #label>
-                <span v-if="relationMode">Relation</span>
-                <span v-else>Span</span>
-              </template>
-            </v-switch>
+            <v-select
+            v-model="labelMode"
+            :items="labelModes"
+            label="Label Type"
+            @change="changeLabelMode"
+            />          
             <v-chip-group v-model="selectedLabelIndex" column>
               <v-chip
                 v-for="(item, index) in labelTypes"
@@ -119,12 +125,16 @@ export default {
       spanTypes: [],
       relations: [],
       relationTypes: [],
+      traits: [],
+      traitTypes: [],
       project: {},
       enableAutoLabeling: false,
       rtl: false,
       selectedLabelIndex: null,
       progress: {},
+      labelMode: "Span",
       relationMode: false,
+      traitMode: false,
       showLabelTypes: true,
       mdiChevronUp,
       mdiChevronDown
@@ -150,6 +160,18 @@ export default {
     ...mapGetters('auth', ['isAuthenticated', 'getUsername', 'getUserId']),
     ...mapGetters('config', ['isRTL']),
 
+    labelModes() {
+      if (this.useRelationLabeling && this.useTraitLabeling) {
+        return ['Span', 'Relation', 'Trait']
+      } else if (this.useRelationLabeling) {
+        return ['Span', 'Relation']
+      } else if (this.useTraitLabeling) {
+        return ['Span', 'Trait']
+      } else {
+        return ['Span']
+      }
+    },
+
     shortKeys() {
       return Object.fromEntries(this.spanTypes.map((item) => [item.id, [item.suffixKey]]))
     },
@@ -170,6 +192,8 @@ export default {
       if (Number.isInteger(this.selectedLabelIndex)) {
         if (this.relationMode) {
           return this.relationTypes[this.selectedLabelIndex]
+        } else if (this.traitMode) {
+          return this.traitTypes[this.selectedLabelIndex]
         } else {
           return this.spanTypes[this.selectedLabelIndex]
         }
@@ -182,9 +206,15 @@ export default {
       return !!this.project.useRelation
     },
 
+    useTraitLabeling() {
+      return !!this.project.useTrait
+    },
+
     labelTypes() {
       if (this.relationMode) {
         return this.relationTypes
+      } else if (this.traitMode) {
+        return this.traitTypes
       } else {
         return this.spanTypes
       }
@@ -204,6 +234,7 @@ export default {
   async created() {
     this.spanTypes = await this.$services.spanType.list(this.projectId)
     this.relationTypes = await this.$services.relationType.list(this.projectId)
+    this.traitTypes = await this.$services.traitType.list(this.projectId)
     this.project = await this.$services.project.findById(this.projectId)
     this.progress = await this.$repositories.metrics.fetchMyProgress(this.projectId)
   },
@@ -219,12 +250,14 @@ export default {
     async list(docId) {
       const annotations = await this.$services.sequenceLabeling.list(this.projectId, docId)
       const relations = await this.$services.sequenceLabeling.listRelations(this.projectId, docId)
+      const traits = await this.$services.sequenceLabeling.listTraits(this.projectId, docId)
       // In colab mode, if someone add a new label and annotate data
       // with the label during your work, it occurs exception
       // because there is no corresponding label.
       await this.maybeFetchSpanTypes(annotations)
       this.annotations = annotations
       this.relations = relations
+      this.traits = traits
     },
 
     async deleteSpan(id) {
@@ -243,12 +276,13 @@ export default {
       await this.list(this.doc.id)
     },
 
-    async updateSpan(annotationId, labelId) {
+    async updateSpan(annotationId, labelId, newState) {
       await this.$services.sequenceLabeling.changeLabel(
         this.projectId,
         this.doc.id,
         annotationId,
-        labelId
+        labelId,
+        newState
       )
       await this.list(this.doc.id)
     },
@@ -264,18 +298,45 @@ export default {
       await this.list(this.doc.id)
     },
 
-    async updateRelation(relationId, typeId) {
+    async updateRelation(relationId, typeId, newState) {
       await this.$services.sequenceLabeling.updateRelation(
         this.projectId,
         this.doc.id,
         relationId,
-        typeId
+        typeId,
+        newState
       )
       await this.list(this.doc.id)
     },
 
     async deleteRelation(relationId) {
       await this.$services.sequenceLabeling.deleteRelation(this.projectId, this.doc.id, relationId)
+      await this.list(this.doc.id)
+    },
+
+    async addTrait(typeId, entityId) {
+      await this.$services.sequenceLabeling.createTrait(
+        this.projectId,
+        this.doc.id,
+        typeId,
+        entityId
+      )
+      await this.list(this.doc.id)
+    },
+
+    async updateTrait(traitId, typeId, newState) {
+      await this.$services.sequenceLabeling.updateTrait(
+        this.projectId,
+        this.doc.id,
+        traitId,
+        typeId,
+        newState
+      )
+      await this.list(this.doc.id)
+    },
+
+    async deleteTrait(traitId) {
+      await this.$services.sequenceLabeling.deleteTrait(this.projectId, this.doc.id, traitId)
       await this.list(this.doc.id)
     },
 
@@ -304,6 +365,26 @@ export default {
 
     changeSelectedLabel(event) {
       this.selectedLabelIndex = this.spanTypes.findIndex((item) => item.suffixKey === event.srcKey)
+    },
+
+    changeLabelMode() {
+      switch(this.labelMode) {
+        case 'Span':
+          this.relationMode = false;
+          this.traitMode = false;
+          break;
+        case 'Relation':
+          this.relationMode = true;
+          this.traitMode = false;
+          break;
+        case 'Trait':
+          this.relationMode = false;
+          this.traitMode = true;
+          break;
+        default:
+          this.relationMode = false;
+          this.traitMode = false;
+      }
     }
   }
 }
@@ -311,10 +392,9 @@ export default {
 
 <style scoped>
 .annotation-text {
-  font-size: 1.25rem !important;
+  font-size: 1rem !important;
   font-weight: 500;
   line-height: 2rem;
   font-family: 'Roboto', sans-serif !important;
-  opacity: 0.6;
 }
 </style>

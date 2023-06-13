@@ -15,7 +15,7 @@ type ProjectFields = {
   allowOverlappingSpans: boolean
   enableGraphemeMode: boolean
   useRelation: boolean
-  allowMemberToCreateLabelType: boolean
+  useTrait: boolean
 }
 
 export interface SearchQueryData {
@@ -52,9 +52,9 @@ export class ProjectApplicationService {
     allowOverlappingSpans,
     enableGraphemeMode,
     useRelation,
+    useTrait,
     tags,
-    guideline = '',
-    allowMemberToCreateLabelType = false
+    guideline = ''
   }: ProjectFields): Promise<Project> {
     const project = Project.create(
       0,
@@ -68,8 +68,8 @@ export class ProjectApplicationService {
       allowOverlappingSpans,
       enableGraphemeMode,
       useRelation,
-      tags.map((tag) => TagItem.create(tag)),
-      allowMemberToCreateLabelType
+      useTrait,
+      tags.map((tag) => TagItem.create(tag))
     )
     try {
       return await this.repository.create(project)
@@ -90,8 +90,8 @@ export class ProjectApplicationService {
       allowOverlappingSpans,
       enableGraphemeMode,
       useRelation,
-      guideline = '',
-      allowMemberToCreateLabelType
+      useTrait,
+      guideline = ''
     }: Omit<ProjectFields, 'tags'>
   ): Promise<void> {
     const project = Project.create(
@@ -106,8 +106,8 @@ export class ProjectApplicationService {
       allowOverlappingSpans,
       enableGraphemeMode,
       useRelation,
-      [],
-      allowMemberToCreateLabelType
+      useTrait,
+      []
     )
 
     try {
@@ -120,13 +120,5 @@ export class ProjectApplicationService {
   public bulkDelete(projects: Project[]): Promise<void> {
     const ids = projects.map((project) => project.id)
     return this.repository.bulkDelete(ids)
-  }
-
-  public async clone(project: Project): Promise<Project> {
-    try {
-      return await this.repository.clone(project)
-    } catch (e: any) {
-      throw new Error(e.response.data.detail)
-    }
   }
 }

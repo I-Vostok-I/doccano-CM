@@ -5,7 +5,7 @@ from django.test import TestCase
 from model_mommy import mommy
 
 from labels.models import Category
-from projects.models import ProjectType
+from projects.models import DOCUMENT_CLASSIFICATION
 from projects.tests.utils import prepare_project
 
 
@@ -16,7 +16,7 @@ class TestCategoryLabeling(abc.ABC, TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.project = prepare_project(
-            ProjectType.DOCUMENT_CLASSIFICATION,
+            DOCUMENT_CLASSIFICATION,
             single_class_classification=cls.exclusive,
             collaborative_annotation=cls.collaborative,
         )
